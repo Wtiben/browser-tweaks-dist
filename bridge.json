@@ -1,0 +1,10 @@
+{
+  "bridges": [
+    {
+      "version": "0.5.3",
+      "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.3.js",
+      "sha256": "cb48296b890798ac1c02ead69fd65b6fee02f2a0df19a25f510d976cfca5047c",
+      "signature": "4YuMhtcPRkgTrYWXmFGKxnneZSlgiD5GigLMAbYyATs1t2B8juwE2lQuGFkNJrwaNjOLMJW12UWNsJjqI0cCCA=="
+    }
+  ]
+}
