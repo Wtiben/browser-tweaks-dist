@@ -21,6 +21,11 @@
           "version": "0.5.3",
           "update_link": "https://wtiben.github.io/browser-tweaks-dist/browser-tweaks-0.5.3.xpi",
           "update_hash": "sha256:02815454b13614732b622cc55bb645e0aa19e5615325972126d030b4e8869759"
+        },
+        {
+          "version": "0.5.4",
+          "update_link": "https://wtiben.github.io/browser-tweaks-dist/browser-tweaks-0.5.4.xpi",
+          "update_hash": "sha256:c46c9042da1117fe78f90377c07fb32ec821a7d386ff3183ed4b3abbc84710f9"
         }
       ]
     }
