@@ -147,6 +147,14 @@ Set-Content -Path (Join-Path $Bin 'launch.js') -Encoding ascii -Value @'
  * the browser's. Deliberately the only file here with no opinions: it does not check for
  * updates, does not read settings and does not know what a bridge does. Rolling back is
  * deleting a directory, which works because this picks whatever is left.
+ *
+ * A real file rather than a string inside the installer, because it is the shape of
+ * production that no other test reproduces: the bridge runs as an import with someone
+ * else's `process.argv`, and the one time that mattered it made every installed copy think
+ * it was a checkout and stop updating. bundle.test.ts runs this file over the real bundle.
+ *
+ * install.ps1 writes it verbatim and never writes it again, so a change here reaches only
+ * machines that install from scratch. Treat it as fixed.
  */
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -164,7 +172,7 @@ const newer = (a, b) => {
 const installed = readdirSync(versions, { withFileTypes: true })
   .filter(entry => entry.isDirectory() && /^\d+\.\d+\.\d+$/.test(entry.name))
   .map(entry => entry.name)
-  .sort((a, b) => (newer(a, b) ? -1 : 1));
+  .toSorted((a, b) => (newer(a, b) ? -1 : 1));
 
 if (!installed.length) {
   console.error('[browser-tweaks] no bridge installed under ' + versions);
