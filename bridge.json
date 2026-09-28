@@ -35,6 +35,12 @@
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.8.js",
       "sha256": "d6ed04d980b206d3606e388dc33529a4f482595a20be3dd46110cc450b184887",
       "signature": "kA2+EqiPriVi8CrA9dYcNktGy9g9uTnZKW5aaH+Ek7T75KMZFeYWPlH3EzU4lZ6+UmluZn0wTtG0L2zp5pdkAw=="
+    },
+    {
+      "version": "0.5.9",
+      "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.9.js",
+      "sha256": "479eb11b51e30f5cb00fff488261755d85c2ca8fd83177462c854a5cd03261ff",
+      "signature": "EiEo5YwM4WwiZg1aDsOeCbqnBhb65qCL+RPte9rBi25ymxIR5bJ8f2DPp5rR9wifyWF4o/mLfrDzBfOZM4CbBg=="
     }
   ]
 }
