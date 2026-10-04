@@ -56,6 +56,11 @@
           "version": "0.6.0",
           "update_link": "https://wtiben.github.io/browser-tweaks-dist/browser-tweaks-0.6.0.xpi",
           "update_hash": "sha256:7f8212a52c427b3935b2d5e3dfcfd4351752de27b28355adea8af06a8ffb9231"
+        },
+        {
+          "version": "0.6.1",
+          "update_link": "https://wtiben.github.io/browser-tweaks-dist/browser-tweaks-0.6.1.xpi",
+          "update_hash": "sha256:ec41661e25327828e1fc39c3e62014795590869dfa98c124f57f45e4e231d48d"
         }
       ]
     }
