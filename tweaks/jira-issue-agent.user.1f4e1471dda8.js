@@ -19,155 +19,10 @@
 		};
 	}
 	//#endregion
-	//#region packages/site-modules/src/modules/github-pr-agent/page.ts
-	const PR_PATH = /^\/([^/]+)\/([^/]+)\/(pulls?)(?:\/(\d+))?/;
-	/** Which of the two surfaces a URL is, or null when it is neither. */
-	function surfaceOf(url) {
-		let path;
-		try {
-			path = new URL(url).pathname;
-		} catch {
-			return null;
-		}
-		const match = PR_PATH.exec(path);
-		if (!match) return null;
-		if (match[3] === "pulls") return "list";
-		return match[4] ? "detail" : null;
-	}
-	function repoFromUrl(url) {
-		let parsed;
-		try {
-			parsed = new URL(url);
-		} catch {
-			return null;
-		}
-		const match = PR_PATH.exec(parsed.pathname);
-		if (!match?.[1] || !match[2]) return null;
-		return {
-			host: parsed.host,
-			owner: match[1],
-			repo: match[2]
-		};
-	}
-	/** `issue_64349` is the row id on the list, and the only place the number appears verbatim. */
-	function prNumberFromRowId(id) {
-		const match = /^issue_(\d+)$/.exec(id);
-		if (!match?.[1]) return null;
-		const parsed = Number(match[1]);
-		return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-	}
-	/**
-	* Wrapped in `:is()` rather than left as a comma list, so callers can safely append to it.
-	* `a, b .child` parses as "a, or b's child", which silently matches every row.
-	*/
-	const ROW_SELECTOR = `:is(.js-issue-row[id^="issue_"], ul[data-listview-component="items-list"] > li)`;
-	/** Where the button goes in a row, per list. Both are `data-` hooks or module prefixes. */
-	const ROW_HOST_SELECTORS = [".text-right.no-wrap", "[class*=\"MetadataContainer-module__container\"]"];
-	/** The number out of `/owner/repo/pull/4325`, which is the only place the React list has it. */
-	function prNumberFromHref(href) {
-		if (!href) return null;
-		const match = /\/pull\/(\d+)(?:[/?#]|$)/.exec(href);
-		if (!match?.[1]) return null;
-		const parsed = Number(match[1]);
-		return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-	}
-	/**
-	* Pull requests on the list page.
-	*
-	* The head branch is deliberately absent: GitHub does not put it in the list DOM at all,
-	* for either the head or the base, and finding out would cost a request per row. The
-	* bridge falls back to the pull ref, which needs no branch name.
-	*/
-	function readRow(row) {
-		const link = row.querySelector("a[id$=\"_link\"], a[data-testid=\"listitem-title-link\"]");
-		const href = link?.getAttribute("href");
-		const number = prNumberFromRowId(row.id) ?? prNumberFromHref(href);
-		if (number === null) return null;
-		return {
-			number,
-			title: link?.textContent?.trim() || `#${number}`,
-			url: href ? new URL(href, "https://github.com").toString() : ""
-		};
-	}
-	const text = (value) => typeof value === "string" && value ? value : void 0;
-	/**
-	* The React payload the detail page ships its own data in.
-	*
-	* It carries the head branch and the fork owner, which is everything the bridge needs to
-	* fetch without guessing. It is an internal payload with no stability contract, so a miss
-	* here falls through to the branch chips rather than failing.
-	*/
-	function parseEmbedded(json) {
-		let payload;
-		try {
-			payload = JSON.parse(json);
-		} catch {
-			return null;
-		}
-		const route = payload?.payload?.pullRequestsLayoutRoute?.pullRequest;
-		if (!route || typeof route.number !== "number") return null;
-		return {
-			number: route.number,
-			title: text(route.title),
-			headBranch: text(route.headBranch) ?? null,
-			headOwner: text(route.headRepositoryOwnerLogin) ?? null,
-			headRepo: text(route.headRepositoryName) ?? null
-		};
-	}
-	/**
-	* The head branch from the branch chips, for when the payload is not there.
-	*
-	* The visible text changes shape between a same-repo pull request (`main`) and a fork
-	* (`owner:branch`), so the tooltip is read instead. It is always `owner/repo:branch`.
-	*/
-	function parseHeadTooltip(tooltip) {
-		const match = /^([^/\s]+)\/([^:\s]+):(.+)$/.exec(tooltip.trim());
-		if (!match?.[1] || !match[2] || !match[3]) return null;
-		return {
-			headOwner: match[1],
-			headRepo: match[2],
-			headBranch: match[3]
-		};
-	}
-	/** The real header, not the sticky duplicate that sits in the DOM at zero size until you scroll. */
-	const HEADER_SELECTOR = "[data-component=\"PageHeader\"]:not([class*=\"stickyHeader\"])";
-	function readDetail(doc, url) {
-		const repo = repoFromUrl(url);
-		if (!repo || surfaceOf(url) !== "detail") return null;
-		const number = Number(/\/pull\/(\d+)/.exec(new URL(url).pathname)?.[1]);
-		if (!Number.isSafeInteger(number) || number <= 0) return null;
-		const base = {
-			...repo,
-			number,
-			title: doc.querySelector(`[data-component="PageHeader"]:not([class*="stickyHeader"]) h1`)?.textContent?.trim() || `#${number}`,
-			url
-		};
-		for (const script of doc.querySelectorAll("script[data-target=\"react-app.embeddedData\"]")) {
-			const parsed = parseEmbedded(script.textContent ?? "");
-			if (parsed && parsed.number === number) return {
-				...base,
-				...parsed,
-				...repo,
-				number,
-				url,
-				title: parsed.title || base.title
-			};
-		}
-		const tooltip = doc.querySelectorAll("[class*=\"PullRequestHeaderBranches-module__branches\"] [data-component=\"BranchName\"]")[1]?.getAttribute("aria-describedby");
-		const described = tooltip ? doc.getElementById(tooltip)?.textContent?.trim() : null;
-		const parsed = described ? parseHeadTooltip(described) : null;
-		return parsed ? {
-			...base,
-			...parsed
-		} : base;
-	}
-	//#endregion
 	//#region packages/site-modules/src/modules/github-pr-agent/ui.ts
 	const PREFIX = "bt-pr";
-	const STYLE_ID = `${PREFIX}-style`;
-	/** Octicon `kebab-horizontal`, inline so it inherits colour instead of shipping an asset. */
-	const KEBAB = "<svg aria-hidden=\"true\" viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" fill=\"currentColor\"><path d=\"M8 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM1.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm13 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z\"></path></svg>";
-	const CSS = `
+	const STYLE_ID$1 = `${PREFIX}-style`;
+	const CSS$1 = `
 .${PREFIX}-button {
   display: inline-flex; align-items: center; justify-content: center;
   /* The list row's container stretches its children, and a fixed-height item in a
@@ -250,10 +105,10 @@
 .${PREFIX}-dialog-error { margin: 0 0 12px; color: var(--fgColor-danger, #d1242f); font-size: 13px; }
 `;
 	function ensureStyle(doc) {
-		if (doc.getElementById(STYLE_ID)) return;
+		if (doc.getElementById(STYLE_ID$1)) return;
 		const style = doc.createElement("style");
-		style.id = STYLE_ID;
-		style.textContent = CSS;
+		style.id = STYLE_ID$1;
+		style.textContent = CSS$1;
 		(doc.head ?? doc.documentElement).append(style);
 	}
 	/**
@@ -279,16 +134,6 @@
 		svg.setAttribute("fill", "currentColor");
 		svg.innerHTML = AGENT_ICONS[kind ?? ""] ?? AGENT_ICONS["generic"];
 		return svg;
-	}
-	function createButton(doc, title) {
-		const button = doc.createElement("button");
-		button.type = "button";
-		button.className = `${PREFIX}-button`;
-		button.title = title;
-		button.setAttribute("aria-label", title);
-		button.setAttribute("aria-expanded", "false");
-		button.innerHTML = KEBAB;
-		return button;
 	}
 	/**
 	* Opens a menu anchored under a button, and returns how to close it.
@@ -324,6 +169,7 @@
 			button.type = "button";
 			button.className = `${PREFIX}-item`;
 			button.setAttribute("role", "menuitem");
+			if (item.separated) button.dataset["separated"] = "true";
 			const text = doc.createElement("span");
 			text.className = `${PREFIX}-item-text`;
 			text.append(doc.createTextNode(item.label));
@@ -370,6 +216,26 @@
 			if (timer !== null) clearTimeout(timer);
 			element.remove();
 		};
+	}
+	/**
+	* Runs an action with a busy toast, turning whatever comes back into one sentence.
+	*
+	* The bridge's errors are passed through rather than rewritten. Git's own messages say
+	* what went wrong better than anything this layer could reconstruct from them.
+	*/
+	async function withProgress(doc, button, busy, run, done) {
+		button.dataset["busy"] = "true";
+		const dismiss = toast(doc, busy, "busy");
+		try {
+			const result = await run();
+			dismiss();
+			toast(doc, done(result), "ok");
+		} catch (error) {
+			dismiss();
+			toast(doc, error instanceof Error ? error.message : String(error), "error");
+		} finally {
+			delete button.dataset["busy"];
+		}
 	}
 	/**
 	* Asks for a filesystem path, validating before it closes.
@@ -467,56 +333,274 @@
 		}) !== null;
 	}
 	//#endregion
-	//#region packages/site-modules/src/modules/github-pr-agent/index.ts
-	var github_pr_agent_exports = /* @__PURE__ */ __exportAll({ githubPrAgent: () => githubPrAgent });
-	const MARK = "data-bt-pr-menu";
-	/** GitHub replaces this frame's children on every soft navigation on the list page. */
-	const FRAME_SELECTOR = "turbo-frame#repo-content-turbo-frame";
+	//#region packages/site-modules/src/modules/jira-issue-agent/page.ts
+	/** Where an issue's summary is, on the full issue view. Atlassian's own test hook. */
+	const SUMMARY_SELECTOR = "[data-testid=\"issue.views.issue-base.foundation.summary.heading\"]";
 	/**
-	* Runs an action with a busy toast, turning whatever comes back into one sentence.
+	* The quick-add row under the summary: Jira's own "+", apps and summarise buttons, which is
+	* where actions on the issue live. Apps first, so the button goes at the end of the group;
+	* the "+" alone when a site has no apps installed.
 	*
-	* The bridge's errors are passed through rather than rewritten. Git's own messages say
-	* what went wrong better than anything this layer could reconstruct from them.
+	* Not the summary heading itself, which looks closer and is wrong: it sits inside the
+	* inline-edit form, React re-renders that on every hover, and a button put there was gone
+	* again before the page could be captured.
 	*/
-	async function withProgress(deps, button, busy, run, done) {
-		button.dataset["busy"] = "true";
-		const dismiss = toast(deps.doc, busy, "busy");
-		try {
-			const result = await run();
-			dismiss();
-			const { skew } = await deps.agent();
-			toast(deps.doc, skew ? `${done(result)} ${skew}` : done(result), "ok");
-		} catch (error) {
-			dismiss();
-			toast(deps.doc, error instanceof Error ? error.message : String(error), "error");
-		} finally {
-			delete button.dataset["busy"];
+	const QUICK_ADD_SELECTORS = ["[data-testid=\"issue-view-foundation.quick-add.quick-add-items-compact.apps-button-dropdown--trigger\"]", "[data-testid=\"issue-view-foundation.quick-add.quick-add-items-compact.add-button-dropdown--trigger\"]"];
+	/** Where the button goes: after the trigger's wrapper, inside the row it shares with the others. */
+	function findHost(doc) {
+		for (const selector of QUICK_ADD_SELECTORS) {
+			const trigger = doc.querySelector(selector);
+			const wrapper = trigger?.closest("[role=\"presentation\"]") ?? trigger;
+			if (wrapper?.parentElement) return {
+				parent: wrapper.parentElement,
+				before: wrapper.nextElementSibling
+			};
 		}
+		return null;
 	}
-	async function onWorktree(deps, button, pr) {
-		if (!await ensureMapped(deps.doc, deps.bridge, pr)) return;
-		await withProgress(deps, button, `Checking out #${pr.number}…`, () => deps.bridge("pr-worktree", pr), (result) => {
-			const checkout = result.reused ? `#${pr.number} was already checked out at ${result.path}.` : `#${pr.number} checked out on ${result.branch} at ${result.path}.`;
+	const KEY = /^[A-Z][A-Z0-9_]*-[1-9][0-9]*$/;
+	/**
+	* The issue a URL shows: `/browse/FIN-8712`, or a board or search with the issue open
+	* beside it, which says so in `selectedIssue`.
+	*/
+	function issueKeyFromUrl(url) {
+		let parsed;
+		try {
+			parsed = new URL(url);
+		} catch {
+			return null;
+		}
+		const candidate = /^\/browse\/([^/]+)\/?$/.exec(parsed.pathname)?.[1] ?? parsed.searchParams.get("selectedIssue");
+		return candidate && KEY.test(candidate) ? candidate : null;
+	}
+	function projectOf(key) {
+		return key.slice(0, key.lastIndexOf("-"));
+	}
+	/**
+	* The summary, from the heading when it has rendered and from the tab title otherwise.
+	*
+	* Jira titles an issue tab `[FIN-8712] Summary - Jira`, which is there from the first byte
+	* and survives a redesign of the view; the heading is preferred only because a title is
+	* cut short by nothing but the browser and could in principle say something else.
+	*/
+	function readSummary(doc, key) {
+		const heading = doc.querySelector(SUMMARY_SELECTOR)?.textContent?.trim();
+		if (heading) return heading;
+		const title = doc.title.trim();
+		const prefix = `[${key}]`;
+		if (!title.startsWith(prefix)) return "";
+		return title.slice(prefix.length).replace(/\s+-\s+Jira$/, "").trim();
+	}
+	/**
+	* The module's `projects` setting, one `KEY=owner/repo@base` per line.
+	*
+	* `@base` is optional, and so is a host in front of the owner (`github.example.com/team/x`)
+	* for an Enterprise install. A line that does not parse is skipped rather than failing the
+	* whole list: one typo should not take every other project's menu with it.
+	*/
+	function parseProjects(lines) {
+		const out = /* @__PURE__ */ new Map();
+		for (const line of lines) {
+			const match = /^\s*([A-Z][A-Z0-9_]*)\s*=\s*(?:([^/\s@]+\.[^/\s@]+)\/)?([^/\s@]+)\/([^/\s@]+)(?:@(\S+))?\s*$/.exec(line);
+			if (!match?.[1] || !match[3] || !match[4]) continue;
+			out.set(match[1], {
+				host: match[2] ?? "github.com",
+				owner: match[3],
+				repo: match[4],
+				base: match[5] ?? null
+			});
+		}
+		return out;
+	}
+	/** Everything the bridge needs about the issue on this page, or null when there is none. */
+	function readIssue(doc, url, projects) {
+		const key = issueKeyFromUrl(url);
+		if (!key) return null;
+		const project = projects.get(projectOf(key));
+		if (!project) return null;
+		const origin = new URL(url).origin;
+		return {
+			...project,
+			key,
+			summary: readSummary(doc, key),
+			url: `${origin}/browse/${key}`
+		};
+	}
+	//#endregion
+	//#region packages/site-modules/src/modules/jira-issue-agent/index.ts
+	var jira_issue_agent_exports = /* @__PURE__ */ __exportAll({ jiraIssueAgent: () => jiraIssueAgent });
+	const MARK = "data-bt-issue-menu";
+	const STYLE_ID = "bt-jira-style";
+	/** Remembered so the button can name the agent without starting the native host to ask. */
+	const AGENT_KEY = "agent";
+	/** More than this and the menu is a list to scroll; the rest are a `git branch` away. */
+	const MAX_BRANCHES = 6;
+	const CONFIG = { projects: {
+		kind: "string-list",
+		label: "Repositories",
+		description: "One line per Jira project: KEY=owner/repo@base. Base is the branch new work starts from, and is optional: without it, the repository's default branch.",
+		default: ["FIN=innovadis-dev/Fincent@development"],
+		placeholder: "FIN=innovadis-dev/Fincent@development"
+	} };
+	/**
+	* Jira's own look, from the Atlassian Design System's CSS variables.
+	*
+	* The tokens are the stable surface: they are what Jira's own components are themed with,
+	* so light and dark follow without a line here knowing which is on. The menu, toast and
+	* dialog are the shared ones from the pull request menu, re-skinned: this sheet goes in
+	* after theirs, so the same selectors win, and GitHub's variables are not defined here
+	* anyway.
+	*/
+	const CSS = `
+.bt-jira-button {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  height: 32px; padding: 0 10px; margin: 0 4px;
+  border: 0; border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-background-neutral, #091e420f); color: var(--ds-text, #172b4d);
+  font: var(--ds-font-body, 400 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  font-weight: var(--ds-font-weight-medium, 500);
+  cursor: pointer; white-space: nowrap; vertical-align: middle;
+}
+.bt-jira-button:hover { background: var(--ds-background-neutral-hovered, #091e4224); }
+.bt-jira-button:active, .bt-jira-button[aria-expanded="true"] {
+  background: var(--ds-background-selected, #e9f2ff); color: var(--ds-text-selected, #0c66e4);
+}
+.bt-jira-button:focus-visible { outline: 2px solid var(--ds-border-focused, #388bff); outline-offset: 2px; }
+.bt-jira-button[data-busy="true"] { cursor: progress; }
+.bt-jira-button[data-busy="true"] svg:first-child { animation: bt-jira-spin 1s linear infinite; }
+@keyframes bt-jira-spin { to { transform: rotate(360deg); } }
+
+html .bt-pr-menu {
+  min-width: 300px; max-width: 420px; padding: 6px 0;
+  border: 0; border-radius: var(--ds-border-radius-100, 4px);
+  background: var(--ds-surface-overlay, #fff); color: var(--ds-text, #172b4d);
+  box-shadow: var(--ds-shadow-overlay, 0 8px 12px #091e4226, 0 0 1px #091e424f);
+  font: var(--ds-font-body, 400 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+}
+html .bt-pr-item { border-radius: 0; padding: 8px 16px; }
+html .bt-pr-item + .bt-pr-item { margin-top: 0; }
+html .bt-pr-item:hover:not(:disabled) { background: var(--ds-background-neutral-subtle-hovered, #091e420f); }
+html .bt-pr-item:active:not(:disabled) { background: var(--ds-background-neutral-subtle-pressed, #091e4224); }
+html .bt-pr-icon, html .bt-pr-item-note { color: var(--ds-text-subtlest, #626f86); }
+html .bt-pr-item-note { font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+html .bt-pr-item[data-separated] { border-top: 1px solid var(--ds-border, #091e4224); margin-top: 6px; padding-top: 12px; }
+
+html .bt-pr-toast {
+  border: 0; border-radius: var(--ds-border-radius-100, 4px);
+  background: var(--ds-surface-overlay, #fff); color: var(--ds-text, #172b4d);
+  box-shadow: var(--ds-shadow-overlay, 0 8px 12px #091e4226, 0 0 1px #091e424f);
+  border-left: 4px solid var(--ds-border-information, #1d7afc);
+  font: var(--ds-font-body, 400 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+}
+html .bt-pr-toast[data-kind="ok"] { border-left-color: var(--ds-border-success, #22a06b); }
+html .bt-pr-toast[data-kind="error"] { border-left-color: var(--ds-border-danger, #e2483d); }
+
+html .bt-pr-backdrop { background: var(--ds-blanket, #091e427d); }
+html .bt-pr-dialog {
+  border: 0; border-radius: var(--ds-border-radius-200, 8px); padding: 24px;
+  background: var(--ds-surface-overlay, #fff); color: var(--ds-text, #172b4d);
+  box-shadow: var(--ds-shadow-overlay, 0 8px 12px #091e4226, 0 0 1px #091e424f);
+  font: var(--ds-font-body, 400 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+}
+html .bt-pr-dialog h2 { font-size: 20px; line-height: 24px; font-weight: var(--ds-font-weight-medium, 500); }
+html .bt-pr-dialog p { color: var(--ds-text-subtle, #44546f); }
+html .bt-pr-dialog input {
+  border: 2px solid var(--ds-border-input, #8590a2); border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-background-input, #fff); padding: 6px 8px;
+}
+html .bt-pr-dialog input:focus { border-color: var(--ds-border-focused, #388bff); outline: none; }
+html .bt-pr-dialog button {
+  border: 0; border-radius: var(--ds-border-radius, 3px); padding: 6px 12px;
+  background: var(--ds-background-neutral-subtle, transparent); color: var(--ds-text-subtle, #44546f);
+  font-weight: var(--ds-font-weight-medium, 500);
+}
+html .bt-pr-dialog button[data-primary] {
+  background: var(--ds-background-brand-bold, #0c66e4); color: var(--ds-text-inverse, #fff); border: 0;
+}
+html .bt-pr-dialog-error { color: var(--ds-text-danger, #ae2e24); }
+`;
+	/** A terminal prompt, for "this opens something in your agent" without naming a vendor. */
+	const GLYPH = "<svg aria-hidden=\"true\" viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" fill=\"currentColor\"><path d=\"M2.2 3.5 6.7 8l-4.5 4.5-1-1L4.7 8 1.2 4.5Zm5.3 8h7v1.5h-7Z\"></path></svg>";
+	/** Atlassian's chevron-down, which is what every Jira dropdown trigger ends in. */
+	const CHEVRON = "<svg aria-hidden=\"true\" viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" fill=\"currentColor\"><path d=\"M4.3 6.3a1 1 0 0 1 1.4 0L8 8.6l2.3-2.3a1 1 0 1 1 1.4 1.4l-3 3a1 1 0 0 1-1.4 0l-3-3a1 1 0 0 1 0-1.4Z\"></path></svg>";
+	function ensureJiraStyle(doc) {
+		ensureStyle(doc);
+		if (doc.getElementById(STYLE_ID)) return;
+		const style = doc.createElement("style");
+		style.id = STYLE_ID;
+		style.textContent = CSS;
+		(doc.head ?? doc.documentElement).append(style);
+	}
+	function createButton(doc, label) {
+		const button = doc.createElement("button");
+		button.type = "button";
+		button.className = "bt-jira-button";
+		button.setAttribute(MARK, "");
+		button.setAttribute("aria-haspopup", "menu");
+		button.setAttribute("aria-expanded", "false");
+		button.title = "Open this issue in a coding agent";
+		const text = doc.createElement("span");
+		text.textContent = label;
+		button.insertAdjacentHTML("afterbegin", GLYPH);
+		button.append(text);
+		button.insertAdjacentHTML("beforeend", CHEVRON);
+		return button;
+	}
+	function describeBranch(branch) {
+		if (branch.worktree) return `Already checked out at ${branch.worktree}`;
+		if (branch.remoteOnly) return "On origin only: checks it out as a worktree, tracking it";
+		return "Checks it out as a worktree";
+	}
+	async function onWorktree(deps, button, issue, branch) {
+		await withProgress(deps.doc, button, branch ? `Checking out ${branch}…` : `Starting a branch for ${issue.key}…`, () => deps.bridge("issue-worktree", {
+			...issue,
+			branch
+		}), (result) => {
+			const checkout = result.reused ? `${result.branch} was already checked out at ${result.path}.` : result.created ? `Started ${result.branch} from ${issue.base ?? "the default branch"} at ${result.path}.` : `${result.branch} checked out at ${result.path}.`;
 			return result.agentNote ? `${checkout} ${result.agentNote}` : checkout;
 		});
 	}
-	async function onSession(deps, button, pr) {
-		if (!await ensureMapped(deps.doc, deps.bridge, pr)) return;
-		await withProgress(deps, button, `Starting a session for #${pr.number}…`, () => deps.bridge("pr-session", pr), (result) => `Asked about #${pr.number} in ${result.cwd}.`);
+	async function onSession(deps, button, issue) {
+		await withProgress(deps.doc, button, `Starting a session for ${issue.key}…`, () => deps.bridge("issue-session", issue), (result) => `Asked about ${issue.key} in ${result.cwd}.`);
 	}
 	/**
-	* The menu items, built when the menu opens rather than when the row renders.
+	* The items, from what the repository holds right now.
 	*
-	* The agent's name comes from the bridge, and asking for it starts the native host. Doing
-	* that for every row of a list nobody has clicked would mean browsing pull requests spawns
-	* a process, so the label is resolved on open and remembered for the rest of the page.
+	* Built on the click, not on render: listing branches starts the native host and runs git,
+	* and doing that on every issue anyone glances at would make reading Jira spawn processes.
 	*/
-	function attach(deps, host, size, pr) {
-		if (host.querySelector(`[${MARK}]`)) return;
-		const button = createButton(deps.doc, "Open this pull request in an agent");
-		button.setAttribute(MARK, "");
-		if (size === "medium") button.dataset["size"] = "medium";
+	function menuItems(deps, button, issue, agent, listed) {
+		const items = listed.branches.slice(0, MAX_BRANCHES).map((branch) => ({
+			label: branch.worktree ? `Open ${branch.name}` : `Check out ${branch.name}`,
+			note: describeBranch(branch),
+			icon: agent.kind,
+			onSelect: () => void onWorktree(deps, button, issue, branch.name)
+		}));
+		if (!listed.branches.some((branch) => branch.name.toLowerCase() === listed.suggested.toLowerCase())) items.push({
+			label: `Start ${listed.suggested}`,
+			note: `New branch from ${issue.base ?? "the default branch"}, as a worktree with ${agent.label}`,
+			icon: agent.kind,
+			onSelect: () => void onWorktree(deps, button, issue, null)
+		});
+		items.push({
+			label: `Ask ${agent.label} about ${issue.key}`,
+			note: "Uses the checkout you already have",
+			icon: agent.kind,
+			separated: true,
+			onSelect: () => void onSession(deps, button, issue)
+		});
+		return items;
+	}
+	function attach(deps) {
+		if (deps.doc.querySelector(`[${MARK}]`)) return;
+		const url = deps.doc.defaultView?.location.href ?? "";
+		if (!readIssue(deps.doc, url, deps.projects)) return;
+		const host = findHost(deps.doc);
+		if (!host) return;
+		ensureJiraStyle(deps.doc);
+		const button = createButton(deps.doc, deps.remembered?.label ?? "Agent");
 		let close = null;
+		let opening = false;
 		button.addEventListener("click", (event) => {
 			event.preventDefault();
 			event.stopPropagation();
@@ -525,125 +609,82 @@
 				close = null;
 				return;
 			}
-			const target = pr();
-			if (!target) return;
+			if (opening) return;
+			const issue = readIssue(deps.doc, deps.doc.defaultView?.location.href ?? url, deps.projects);
+			if (!issue) return;
+			opening = true;
 			(async () => {
-				const agent = await deps.agent();
-				close = openMenu(deps.doc, button, [{
-					label: `Open in ${agent.label}`,
-					note: "Checks the branch out as a worktree",
-					icon: agent.kind,
-					onSelect: () => void onWorktree(deps, button, target)
-				}, {
-					label: `Ask ${agent.label} about this PR`,
-					note: "Uses the checkout you already have",
-					icon: agent.kind,
-					onSelect: () => void onSession(deps, button, target)
-				}]);
+				try {
+					if (!await ensureMapped(deps.doc, deps.bridge, issue)) return;
+					const [agent, listed] = await Promise.all([deps.agent(), deps.bridge("issue-branches", issue)]);
+					const label = button.querySelector("span");
+					if (label) label.textContent = agent.label;
+					close = openMenu(deps.doc, button, menuItems(deps, button, issue, agent, listed));
+				} catch (error) {
+					toast(deps.doc, error instanceof Error ? error.message : String(error), "error");
+				} finally {
+					opening = false;
+				}
 			})();
 		});
-		host.append(button);
-	}
-	/** The trailing slot on a list row, per list shape, falling back to the row itself. */
-	function rowHost(row) {
-		for (const selector of ROW_HOST_SELECTORS) {
-			const host = row.querySelector(selector);
-			if (host) return host;
-		}
-		return row;
+		host.parent.insertBefore(button, host.before);
 	}
 	/**
-	* The Primer actions slot on the detail header.
-	*
-	* Signed out it is empty and carries `d-none`, which has to come off or the button is
-	* invisible. Signed in it holds Edit and Code, so appending has to tolerate siblings.
-	*/
-	function detailHost(doc) {
-		const header = doc.querySelector(HEADER_SELECTOR);
-		if (!header) return null;
-		const actions = header.querySelector("[data-component=\"PH_Actions\"]");
-		if (actions) {
-			actions.classList.remove("d-none");
-			return actions;
-		}
-		return header.querySelector("[data-component=\"TitleArea\"]");
-	}
-	function inject(deps) {
-		const url = deps.doc.defaultView?.location.href ?? "";
-		const surface = surfaceOf(url);
-		if (!surface) return;
-		const repo = repoFromUrl(url);
-		if (!repo) return;
-		ensureStyle(deps.doc);
-		if (surface === "list") {
-			for (const row of deps.doc.querySelectorAll(ROW_SELECTOR)) attach(deps, rowHost(row), "small", () => {
-				const read = readRow(row);
-				return read ? {
-					...repo,
-					...read
-				} : null;
-			});
-			return;
-		}
-		const host = detailHost(deps.doc);
-		if (host) attach(deps, host, "medium", () => readDetail(deps.doc, deps.doc.defaultView?.location.href ?? url));
-	}
-	/**
-	* Re-injects when GitHub swaps the page under us.
-	*
-	* The runtime already tears modules down and restarts them on a URL change, which covers
-	* filters and pagination. This covers what it cannot see: a Turbo frame replacing its
-	* children at the same URL, and the React detail header mounting after the frame arrives.
+	* Jira is one long-lived application: the issue view renders well after the document,
+	* and moving between issues replaces it without a navigation the runtime would see.
 	*/
 	function watch(deps) {
-		const target = deps.doc.querySelector(FRAME_SELECTOR) ?? deps.doc.body;
-		if (!target) return () => {};
 		let queued = false;
 		const observer = new MutationObserver(() => {
 			if (queued) return;
 			queued = true;
 			setTimeout(() => {
 				queued = false;
-				inject(deps);
+				attach(deps);
 			}, 0);
 		});
-		observer.observe(target, {
+		observer.observe(deps.doc.body, {
 			childList: true,
 			subtree: true
 		});
 		return () => observer.disconnect();
 	}
-	const githubPrAgent = defineSiteModule({
-		id: "github-pr-agent",
-		label: "Open pull requests in an agent",
-		description: "Adds a menu to every pull request that checks its branch out as a worktree and opens it in your coding agent, or starts a session to ask about it without checking anything out.",
-		matches: ["https://github.com/*"],
-		config: {},
-		setup(context) {
+	const jiraIssueAgent = defineSiteModule({
+		id: "jira-issue-agent",
+		label: "Open Jira issues in an agent",
+		description: "Adds a menu to a Jira issue that checks out one of the issue's branches as a worktree, or starts a new one, and opens it in your coding agent. It can also start a session to ask about the issue without checking anything out.",
+		matches: ["https://*.atlassian.net/*"],
+		config: CONFIG,
+		async setup(context) {
 			const doc = document;
+			const remembered = await context.storage.get(AGENT_KEY, null);
+			if (!context.active) return;
 			let agent = null;
 			const deps = {
 				doc,
 				bridge: context.bridge,
+				projects: parseProjects(context.config.projects),
+				remembered,
 				agent: async () => {
-					agent ??= context.bridge("health").then((result) => ({
-						label: result.agent,
-						kind: result.kind,
-						skew: result.version === context.extensionVersion ? null : `Bridge is ${result.version}, add-on is ${context.extensionVersion}.`
-					}), () => ({
+					agent ??= context.bridge("health").then(async (result) => {
+						const found = {
+							label: result.agent,
+							kind: result.kind
+						};
+						await context.storage.set(AGENT_KEY, found);
+						return found;
+					}, () => remembered ?? {
 						label: "agent",
-						kind: "generic",
-						skew: null
-					}));
+						kind: "generic"
+					});
 					return await agent;
 				}
 			};
-			inject(deps);
+			attach(deps);
 			const stopWatching = watch(deps);
 			context.onCleanup(() => {
 				stopWatching();
-				for (const button of doc.querySelectorAll(`[${MARK}]`)) button.remove();
-				for (const node of doc.querySelectorAll(".bt-pr-menu, .bt-pr-toast, .bt-pr-backdrop")) node.remove();
+				for (const node of doc.querySelectorAll(`[${MARK}], .bt-pr-menu, .bt-pr-toast, .bt-pr-backdrop`)) node.remove();
 			});
 		}
 	});
@@ -1013,7 +1054,7 @@
 		})();
 	}
 	//#endregion
-	//#region \0user:github-pr-agent
-	runTweak(pickModule(github_pr_agent_exports));
+	//#region \0user:jira-issue-agent
+	runTweak(pickModule(jira_issue_agent_exports));
 	//#endregion
 })();
