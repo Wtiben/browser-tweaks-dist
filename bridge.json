@@ -3,62 +3,68 @@
     {
       "version": "0.5.3",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.3.js",
-      "sha256": "31bd3127f07b4152049d904cc7c9e27d63d8b4421e80d668cd19f2df26881a0f",
+      "sha256": "cb48296b890798ac1c02ead69fd65b6fee02f2a0df19a25f510d976cfca5047c",
       "signature": "4YuMhtcPRkgTrYWXmFGKxnneZSlgiD5GigLMAbYyATs1t2B8juwE2lQuGFkNJrwaNjOLMJW12UWNsJjqI0cCCA=="
     },
     {
       "version": "0.5.4",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.4.js",
-      "sha256": "250faee3c768926ead759a208b4c918017edff544a0510265a3d11461a3cb551",
+      "sha256": "ac357d44732941ad91d6d509397012b1ff91a47ec379fe8cbbc215337bfa8a87",
       "signature": "oN3MD0mOlCDwJLa3FBmqX2ztVzfND7kBxCXR3Vxc+73PhKrct6gJpoOR6PRln5lm0JumGV8IuBQWERW/60ogCw=="
     },
     {
       "version": "0.5.5",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.5.js",
-      "sha256": "123671b74211f6354201babb810fd83e82a596530b641309bf67f0fc6cbe351c",
+      "sha256": "2992865338bda293b5678b86405d2cd4fd072595e3d15fa0d49cbe986ab097fd",
       "signature": "3C6q0V81T5QIINEYZ85DwaZborj+bVbPhNxfZIw1Ri8ViyXW1COuuItnVHIYqP4RDgzawh8uK1UFs3qLG7gZAA=="
     },
     {
       "version": "0.5.6",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.6.js",
-      "sha256": "69af993d768182da3fc58e63b588756f915edcb43772dfc39070aba44b1ccd99",
+      "sha256": "11cf9eb7cecd936d991a651adf071547e2bed2a87a1f5583d12fe4cc5684674c",
       "signature": "9JKKDegC38HCKaE8slXOY/I8OVlUK6c5Q2ZwL0p2K7GgwNvBfRCrpHyWK4cHNtltf5XmE8qnxK0madVwdz5kCQ=="
     },
     {
       "version": "0.5.7",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.7.js",
-      "sha256": "c3b6d3a4291f0a6f8d2728c176b5c530c843ed6317b4d6e0c1fd1a286cbc1a2a",
+      "sha256": "d5b11fb73417388a8ed46b3d65bd23322a2ab798a195e55ffe887dd0511d5602",
       "signature": "PkZHsnnGzx2Ch9zg/tOmz3pFEFrpNnAOz8GTbnnp0o8zl85A7VReorEycWX9vfLIkxzTH8OmAg14IDmKGyFTAA=="
     },
     {
       "version": "0.5.8",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.8.js",
-      "sha256": "5cdafe1f3ae2190b665fd8f7c306da748cf62bd0ce22de644111f82a69586e23",
+      "sha256": "d6ed04d980b206d3606e388dc33529a4f482595a20be3dd46110cc450b184887",
       "signature": "kA2+EqiPriVi8CrA9dYcNktGy9g9uTnZKW5aaH+Ek7T75KMZFeYWPlH3EzU4lZ6+UmluZn0wTtG0L2zp5pdkAw=="
     },
     {
       "version": "0.5.9",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.5.9.js",
-      "sha256": "358fa201424d518314cd5f8d33ed41e99e8e37ad1dc37946191a8b4f51c27180",
+      "sha256": "479eb11b51e30f5cb00fff488261755d85c2ca8fd83177462c854a5cd03261ff",
       "signature": "EiEo5YwM4WwiZg1aDsOeCbqnBhb65qCL+RPte9rBi25ymxIR5bJ8f2DPp5rR9wifyWF4o/mLfrDzBfOZM4CbBg=="
     },
     {
       "version": "0.6.0",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.6.0.js",
-      "sha256": "5baffa797799dafd7e817e3c9541d2f1627078b318aa6e1c6613cff25b2634ae",
+      "sha256": "89640ef686adf76c7592908c81b137fd8abc26ea68e588ade5a1ed62244223e5",
       "signature": "VIWR9BijHb8TF8yiHpWWNEkxVAnQoTZiZ2F+UviFbln6lWz04IWyXGmvidzH3nmFJSCaJKE9gCZ4L1G+8BgDDw=="
     },
     {
       "version": "0.6.1",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.6.1.js",
-      "sha256": "4e5696db70fef834c0a8a2a1bbdd580b193f9380ac94c328ab7b379e9a2e7df5",
+      "sha256": "b681559915676f14f912ef882c44f565b28087ea4d58a3af451cab64b5b7e395",
       "signature": "xsDnvsV4ESswx8k+7OFUmkAGxnmUKXgrRfITceYzSElKD4SLkA64Su5tCyKQQn1EaU43OXCcQL1ChLmKdET0Dg=="
     },
     {
       "version": "0.6.2",
       "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.6.2.js",
-      "sha256": "7bbf8de878c66f583247f379e51b7e8bff1b504d9501120528908a10a4fd4030",
+      "sha256": "10191e353cad0666846dbe6cb4292dc1b203236a82b289ef6df9f20e0e2561bb",
       "signature": "OwaCwZWR9zRYN1fKWLZAqdOQintwP3uPqWDVzH0mRrX/GTa7NXTgjENqDOT3YLbnYO7GXOOSeDAVmkKLm8qACQ=="
+    },
+    {
+      "version": "0.6.3",
+      "url": "https://wtiben.github.io/browser-tweaks-dist/bridge-0.6.3.js",
+      "sha256": "030fbe2b57195edf0469b67d68d55c3aa0508327088e7f861d2f2eb72194439b",
+      "signature": "ykhVryztwZxjvq/FDtpODavgqZAo+fCHQoryFUvv6J9rHCYiKAd1neyzzq8gELNaIJvQPg9EkmWRYDiSMMuaBA=="
     }
   ]
 }
